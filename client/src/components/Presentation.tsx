@@ -6,7 +6,6 @@ interface Slide {
   slideNumber: number;
   backgroundImage: string;
   audioFile: string;
-  duration: string;
 }
 
 const slides: Slide[] = [
@@ -15,127 +14,123 @@ const slides: Slide[] = [
     slideNumber: 0,
     backgroundImage: '/slides/slide-01.png',
     audioFile: '/audio/DanceCrazy.InDubai.mp3',
-    duration: '6:36',
   },
   {
     id: 'day1',
     slideNumber: 1,
     backgroundImage: '/slides/slide-02.png',
     audioFile: '/audio/DanceCrazy.InDubai.mp3',
-    duration: '6:36',
   },
   {
     id: 'day2',
     slideNumber: 2,
     backgroundImage: '/slides/slide-03.png',
     audioFile: '/audio/WHENYOUFEELSOMETHING(1).mp3',
-    duration: '5:36',
   },
   {
     id: 'day3',
     slideNumber: 3,
     backgroundImage: '/slides/slide-04.png',
     audioFile: '/audio/SomeoneWhoWantsMe.mp3',
-    duration: '6:18',
   },
   {
     id: 'day4',
     slideNumber: 4,
     backgroundImage: '/slides/slide-05.png',
     audioFile: '/audio/YOUSAID(EXTENDEDCLUBMIX)(1).mp3',
-    duration: '9:00',
   },
   {
     id: 'day5',
     slideNumber: 5,
     backgroundImage: '/slides/slide-06.png',
     audioFile: '/audio/YouAreValuable–PianoVersion.mp3',
-    duration: '4:18',
   },
   {
     id: 'day6',
     slideNumber: 6,
     backgroundImage: '/slides/slide-07.png',
     audioFile: '/audio/MISSINGFROMME(1).mp3',
-    duration: '5:36',
   },
   {
     id: 'day7',
     slideNumber: 7,
     backgroundImage: '/slides/slide-08.png',
     audioFile: '/audio/YouHaveEverythingYouNeed(1)(1).mp3',
-    duration: '4:30',
   },
   {
     id: 'timeline',
     slideNumber: 8,
     backgroundImage: '/slides/slide-09.png',
     audioFile: '/audio/YouHaveEverythingYouNeed(1)(1).mp3',
-    duration: '4:30',
   },
   {
     id: 'performance',
     slideNumber: 9,
     backgroundImage: '/slides/slide-10.png',
     audioFile: '/audio/YouHaveEverythingYouNeed(1)(1).mp3',
-    duration: '4:30',
   },
   {
     id: 'strategy',
     slideNumber: 10,
     backgroundImage: '/slides/slide-11.png',
     audioFile: '/audio/YouHaveEverythingYouNeed(1)(1).mp3',
-    duration: '4:30',
   },
   {
     id: 'cta',
     slideNumber: 11,
     backgroundImage: '/slides/slide-12.png',
     audioFile: '/audio/YouHaveEverythingYouNeed(1)(1).mp3',
-    duration: '4:30',
   },
 ];
 
 export default function Presentation() {
-  // Version: 2025-01-07-v6 (Mobile portrait with visible controls)
+  // Version: 2025-01-07-mobile-responsive (Mobile portrait with auto-adjust)
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobilePortrait, setIsMobilePortrait] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Detect mobile portrait orientation
+  useEffect(() => {
+    const checkOrientation = () => {
+      const isMobile = window.innerWidth < 768;
+      const isPortrait = window.innerHeight > window.innerWidth;
+      setIsMobilePortrait(isMobile && isPortrait);
+    };
+
+    checkOrientation();
+    window.addEventListener('resize', checkOrientation);
+    window.addEventListener('orientationchange', checkOrientation);
+
+    return () => {
+      window.removeEventListener('resize', checkOrientation);
+      window.removeEventListener('orientationchange', checkOrientation);
+    };
+  }, []);
 
   const slide = slides[currentSlide];
 
-  // Detect mobile
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  // Auto-play audio when slide changes
+  // Handle slide change - reset and play audio
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
+    // Set new audio source
+    audio.src = slide.audioFile;
     audio.currentTime = 0;
 
+    // Play if not muted and playing is enabled
     if (isPlaying && !isMuted) {
-      audio.play().catch((error) => {
-        console.log('Autoplay blocked by browser:', error);
+      audio.play().catch((err) => {
+        console.log('Autoplay blocked:', err);
       });
-    } else {
-      audio.pause();
     }
   }, [currentSlide, isPlaying, isMuted]);
 
-  // Handle audio ended - move to next slide
+  // Handle audio ended
   const handleAudioEnd = () => {
     if (currentSlide < slides.length - 1) {
       setCurrentSlide((prev) => prev + 1);
@@ -144,7 +139,47 @@ export default function Presentation() {
     }
   };
 
-  // Handle slide navigation
+  // Keyboard controls
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight') {
+        setCurrentSlide((prev) => (prev + 1) % slides.length);
+      }
+      if (e.key === 'ArrowLeft') {
+        setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
+      }
+      if (e.key === ' ') {
+        e.preventDefault();
+        setIsPlaying((prev) => !prev);
+      }
+      if (e.key === 'm' || e.key === 'M') {
+        setIsMuted((prev) => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Handle play/pause
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (isPlaying && !isMuted) {
+      audio.play().catch(() => {});
+    } else {
+      audio.pause();
+    }
+  }, [isPlaying, isMuted]);
+
+  // Handle mute
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.muted = isMuted;
+    }
+  }, [isMuted]);
+
   const handleNext = () => {
     setCurrentSlide((prev) => (prev + 1) % slides.length);
   };
@@ -153,31 +188,12 @@ export default function Presentation() {
     setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
   };
 
-  // Handle keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowRight') handleNext();
-      if (e.key === 'ArrowLeft') handlePrev();
-      if (e.key === ' ') {
-        e.preventDefault();
-        setIsPlaying(!isPlaying);
-      }
-      if (e.key === 'm' || e.key === 'M') toggleMute();
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isPlaying, isMuted]);
+  const togglePlayPause = () => {
+    setIsPlaying(!isPlaying);
+  };
 
   const toggleMute = () => {
     setIsMuted(!isMuted);
-    if (audioRef.current) {
-      audioRef.current.muted = !isMuted;
-    }
-  };
-
-  const togglePlayPause = () => {
-    setIsPlaying(!isPlaying);
   };
 
   const handleTimeUpdate = () => {
@@ -199,187 +215,116 @@ export default function Presentation() {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
+  const progressPercent = duration ? (currentTime / duration) * 100 : 0;
+
   return (
-    <div
-      ref={containerRef}
-      className="w-screen h-screen overflow-hidden bg-black flex flex-col"
-      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
-    >
-      {/* Mobile Portrait Layout */}
-      {isMobile ? (
-        <>
-          {/* Mobile: Full slide image with title at top, picture below */}
-          <div className="flex-1 flex flex-col overflow-hidden bg-black">
-            {/* Slide Image - full height with proper aspect ratio */}
-            <div className="flex-1 flex items-center justify-center bg-black min-h-0 overflow-hidden">
-              <img
-                src={slide.backgroundImage}
-                alt="Slide"
-                className="w-full h-full object-contain"
-              />
-            </div>
+    <div className={`w-screen h-screen bg-black flex flex-col overflow-hidden ${
+      isMobilePortrait ? 'portrait-mode' : 'landscape-mode'
+    }`}>
+      {/* Slide Image Container - Responsive */}
+      <div className={`flex items-center justify-center bg-black overflow-hidden ${
+        isMobilePortrait ? 'flex-1' : 'flex-1'
+      }`}>
+        <img
+          src={slide.backgroundImage}
+          alt={`Slide ${currentSlide + 1}`}
+          className="w-full h-full object-contain"
+          loading="lazy"
+        />
+      </div>
 
-            {/* Controls at bottom - always visible */}
-            <div className="bg-gradient-to-t from-black via-black/95 to-black/60 px-3 py-3 flex-shrink-0">
-              {/* Progress bar */}
-              <div className="w-full h-0.5 bg-slate-800/50 mb-2 rounded">
-                <div
-                  className="h-full bg-gradient-to-r from-cyan-400 to-cyan-300 transition-all duration-100"
-                  style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }}
-                />
-              </div>
-
-              {/* Time display */}
-              <div className="flex justify-between text-xs text-cyan-400 opacity-75 mb-2">
-                <span>{formatTime(currentTime)}</span>
-                <span>{formatTime(duration)}</span>
-              </div>
-
-              {/* Control buttons - horizontal layout */}
-              <div className="flex items-center gap-1.5 justify-center mb-2">
-                <button
-                  onClick={handlePrev}
-                  className="p-1.5 rounded-full border border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-black transition-all active:scale-95"
-                  aria-label="Previous"
-                >
-                  <ChevronLeft size={16} />
-                </button>
-
-                <button
-                  onClick={togglePlayPause}
-                  className="p-1.5 rounded-full border border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-black transition-all active:scale-95"
-                  aria-label="Play/Pause"
-                >
-                  {isPlaying ? <Pause size={16} /> : <Play size={16} />}
-                </button>
-
-                <button
-                  onClick={toggleMute}
-                  className="p-1.5 rounded-full border border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-black transition-all active:scale-95"
-                  aria-label="Mute"
-                >
-                  {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
-                </button>
-
-                <button
-                  onClick={handleNext}
-                  className="p-1.5 rounded-full border border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-black transition-all active:scale-95"
-                  aria-label="Next"
-                >
-                  <ChevronRight size={16} />
-                </button>
-              </div>
-
-              {/* Instructions */}
-              <div className="text-center text-gray-300 text-xs">
-                <p className="leading-tight">← → Space M • Slide {currentSlide + 1} / {slides.length}</p>
-              </div>
-            </div>
-          </div>
-        </>
-      ) : (
-        <>
-          {/* Desktop: Full-screen background image */}
+      {/* Controls Bar - Always visible at bottom */}
+      <div className={`bg-black border-t border-cyan-400/20 ${
+        isMobilePortrait ? 'px-3 py-3' : 'px-4 py-4'
+      }`}>
+        {/* Progress Bar */}
+        <div className={`w-full h-1 bg-slate-700 rounded ${
+          isMobilePortrait ? 'mb-2' : 'mb-3'
+        }`}>
           <div
-            className="absolute inset-0 w-full h-full"
-            style={{
-              backgroundImage: `url('${slide.backgroundImage}')`,
-              backgroundSize: 'contain',
-              backgroundPosition: 'center',
-              backgroundRepeat: 'no-repeat',
-              backgroundColor: '#000',
-            }}
+            className="h-full bg-gradient-to-r from-cyan-400 to-cyan-300 rounded transition-all"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+
+        {/* Time Display */}
+        <div className={`flex justify-between text-cyan-300 ${
+          isMobilePortrait ? 'text-xs mb-2' : 'text-sm mb-3'
+        }`}>
+          <span>{formatTime(currentTime)}</span>
+          <span>{formatTime(duration)}</span>
+        </div>
+
+        {/* Control Buttons */}
+        <div className={`flex items-center justify-center ${
+          isMobilePortrait ? 'gap-2 mb-2' : 'gap-3 mb-3'
+        }`}>
+          <button
+            onClick={handlePrev}
+            className={`rounded-full border-2 border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-black transition-all active:scale-95 ${
+              isMobilePortrait ? 'p-1.5' : 'p-2'
+            }`}
+            title="Previous slide"
           >
-            {/* Dark overlay for control visibility */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/40" />
-          </div>
+            <ChevronLeft size={isMobilePortrait ? 18 : 20} />
+          </button>
 
-          {/* Desktop: Controls at bottom */}
-          <div className="relative z-20 mt-auto w-full">
-            {/* Progress bar */}
-            <div className="w-full h-1 bg-slate-800/50">
-              <div
-                className="h-full bg-gradient-to-r from-cyan-400 to-cyan-300 transition-all duration-100"
-                style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }}
-              />
-            </div>
+          <button
+            onClick={togglePlayPause}
+            className={`rounded-full border-2 border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-black transition-all active:scale-95 ${
+              isMobilePortrait ? 'p-1.5' : 'p-2'
+            }`}
+            title="Play/Pause"
+          >
+            {isPlaying ? (
+              <Pause size={isMobilePortrait ? 18 : 20} />
+            ) : (
+              <Play size={isMobilePortrait ? 18 : 20} />
+            )}
+          </button>
 
-            {/* Control panel */}
-            <div className="bg-gradient-to-t from-black via-black/95 to-black/60 px-3 py-4 sm:px-4 sm:py-5">
-              <div className="w-full space-y-3 sm:space-y-4">
-                {/* Time display */}
-                <div className="flex justify-between text-xs sm:text-sm text-cyan-400 opacity-75">
-                  <span>{formatTime(currentTime)}</span>
-                  <span>{formatTime(duration)}</span>
-                </div>
+          <button
+            onClick={toggleMute}
+            className={`rounded-full border-2 border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-black transition-all active:scale-95 ${
+              isMobilePortrait ? 'p-1.5' : 'p-2'
+            }`}
+            title="Mute/Unmute"
+          >
+            {isMuted ? (
+              <VolumeX size={isMobilePortrait ? 18 : 20} />
+            ) : (
+              <Volume2 size={isMobilePortrait ? 18 : 20} />
+            )}
+          </button>
 
-                {/* Control buttons */}
-                <div className="flex items-center gap-3 sm:gap-4 justify-center">
-                  <button
-                    onClick={handlePrev}
-                    className="p-2 sm:p-2.5 rounded-full border border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-black transition-all duration-300 hover:shadow-lg hover:shadow-cyan-400/50 active:scale-95"
-                    aria-label="Previous"
-                    title="Previous"
-                  >
-                    <ChevronLeft size={16} className="sm:w-5 sm:h-5" />
-                  </button>
+          <button
+            onClick={handleNext}
+            className={`rounded-full border-2 border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-black transition-all active:scale-95 ${
+              isMobilePortrait ? 'p-1.5' : 'p-2'
+            }`}
+            title="Next slide"
+          >
+            <ChevronRight size={isMobilePortrait ? 18 : 20} />
+          </button>
+        </div>
 
-                  <button
-                    onClick={togglePlayPause}
-                    className="p-2 sm:p-2.5 rounded-full border border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-black transition-all duration-300 hover:shadow-lg hover:shadow-cyan-400/50 active:scale-95"
-                    aria-label="Play/Pause"
-                    title="Play/Pause"
-                  >
-                    {isPlaying ? (
-                      <Pause size={16} className="sm:w-5 sm:h-5" />
-                    ) : (
-                      <Play size={16} className="sm:w-5 sm:h-5" />
-                    )}
-                  </button>
+        {/* Info Text */}
+        <div className={`text-center text-cyan-300 ${
+          isMobilePortrait ? 'text-xs' : 'text-sm'
+        }`}>
+          <p>← → Space M • Slide {currentSlide + 1} / {slides.length}</p>
+        </div>
+      </div>
 
-                  <button
-                    onClick={toggleMute}
-                    className="p-2 sm:p-2.5 rounded-full border border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-black transition-all duration-300 hover:shadow-lg hover:shadow-cyan-400/50 active:scale-95"
-                    aria-label="Mute"
-                    title="Mute"
-                  >
-                    {isMuted ? (
-                      <VolumeX size={16} className="sm:w-5 sm:h-5" />
-                    ) : (
-                      <Volume2 size={16} className="sm:w-5 sm:h-5" />
-                    )}
-                  </button>
-
-                  <button
-                    onClick={handleNext}
-                    className="p-2 sm:p-2.5 rounded-full border border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-black transition-all duration-300 hover:shadow-lg hover:shadow-cyan-400/50 active:scale-95"
-                    aria-label="Next"
-                    title="Next"
-                  >
-                    <ChevronRight size={16} className="sm:w-5 sm:h-5" />
-                  </button>
-                </div>
-
-                {/* Instructions */}
-                <div className="text-center text-gray-300 text-xs sm:text-sm">
-                  <p>← → Space M • Slide {currentSlide + 1} / {slides.length}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Audio player (hidden) */}
+      {/* Hidden Audio Player */}
       <audio
         ref={audioRef}
         src={slide.audioFile}
         onEnded={handleAudioEnd}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
-        muted={isMuted}
-        autoPlay
-        controls={false}
+        onPlay={() => setIsPlaying(true)}
+        onPause={() => setIsPlaying(false)}
       />
     </div>
   );
