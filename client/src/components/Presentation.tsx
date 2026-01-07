@@ -97,16 +97,27 @@ const slides: Slide[] = [
 ];
 
 export default function Presentation() {
-  // Version: 2025-01-07-v5 (Mobile portrait optimized)
+  // Version: 2025-01-07-v6 (Mobile portrait with visible controls)
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const slide = slides[currentSlide];
+
+  // Detect mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Auto-play audio when slide changes
   useEffect(() => {
@@ -194,20 +205,170 @@ export default function Presentation() {
       className="w-screen h-screen overflow-hidden bg-black flex flex-col"
       style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
     >
-      {/* Full-screen background image - mobile portrait optimized */}
-      <div
-        className="absolute inset-0 w-full h-full"
-        style={{
-          backgroundImage: `url('${slide.backgroundImage}')`,
-          backgroundSize: 'contain',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-          backgroundColor: '#000',
-        }}
-      >
-        {/* Dark overlay for control visibility */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/40" />
-      </div>
+      {/* Mobile Portrait Layout */}
+      {isMobile ? (
+        <>
+          {/* Mobile: Full slide image with title at top, picture below */}
+          <div className="flex-1 flex flex-col overflow-hidden bg-black">
+            {/* Slide Image - full height with proper aspect ratio */}
+            <div className="flex-1 flex items-center justify-center bg-black min-h-0 overflow-hidden">
+              <img
+                src={slide.backgroundImage}
+                alt="Slide"
+                className="w-full h-full object-contain"
+              />
+            </div>
+
+            {/* Controls at bottom - always visible */}
+            <div className="bg-gradient-to-t from-black via-black/95 to-black/60 px-3 py-3 flex-shrink-0">
+              {/* Progress bar */}
+              <div className="w-full h-0.5 bg-slate-800/50 mb-2 rounded">
+                <div
+                  className="h-full bg-gradient-to-r from-cyan-400 to-cyan-300 transition-all duration-100"
+                  style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }}
+                />
+              </div>
+
+              {/* Time display */}
+              <div className="flex justify-between text-xs text-cyan-400 opacity-75 mb-2">
+                <span>{formatTime(currentTime)}</span>
+                <span>{formatTime(duration)}</span>
+              </div>
+
+              {/* Control buttons - horizontal layout */}
+              <div className="flex items-center gap-1.5 justify-center mb-2">
+                <button
+                  onClick={handlePrev}
+                  className="p-1.5 rounded-full border border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-black transition-all active:scale-95"
+                  aria-label="Previous"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+
+                <button
+                  onClick={togglePlayPause}
+                  className="p-1.5 rounded-full border border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-black transition-all active:scale-95"
+                  aria-label="Play/Pause"
+                >
+                  {isPlaying ? <Pause size={16} /> : <Play size={16} />}
+                </button>
+
+                <button
+                  onClick={toggleMute}
+                  className="p-1.5 rounded-full border border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-black transition-all active:scale-95"
+                  aria-label="Mute"
+                >
+                  {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                </button>
+
+                <button
+                  onClick={handleNext}
+                  className="p-1.5 rounded-full border border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-black transition-all active:scale-95"
+                  aria-label="Next"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+
+              {/* Instructions */}
+              <div className="text-center text-gray-300 text-xs">
+                <p className="leading-tight">← → Space M • Slide {currentSlide + 1} / {slides.length}</p>
+              </div>
+            </div>
+          </div>
+        </>
+      ) : (
+        <>
+          {/* Desktop: Full-screen background image */}
+          <div
+            className="absolute inset-0 w-full h-full"
+            style={{
+              backgroundImage: `url('${slide.backgroundImage}')`,
+              backgroundSize: 'contain',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat',
+              backgroundColor: '#000',
+            }}
+          >
+            {/* Dark overlay for control visibility */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/40" />
+          </div>
+
+          {/* Desktop: Controls at bottom */}
+          <div className="relative z-20 mt-auto w-full">
+            {/* Progress bar */}
+            <div className="w-full h-1 bg-slate-800/50">
+              <div
+                className="h-full bg-gradient-to-r from-cyan-400 to-cyan-300 transition-all duration-100"
+                style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }}
+              />
+            </div>
+
+            {/* Control panel */}
+            <div className="bg-gradient-to-t from-black via-black/95 to-black/60 px-3 py-4 sm:px-4 sm:py-5">
+              <div className="w-full space-y-3 sm:space-y-4">
+                {/* Time display */}
+                <div className="flex justify-between text-xs sm:text-sm text-cyan-400 opacity-75">
+                  <span>{formatTime(currentTime)}</span>
+                  <span>{formatTime(duration)}</span>
+                </div>
+
+                {/* Control buttons */}
+                <div className="flex items-center gap-3 sm:gap-4 justify-center">
+                  <button
+                    onClick={handlePrev}
+                    className="p-2 sm:p-2.5 rounded-full border border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-black transition-all duration-300 hover:shadow-lg hover:shadow-cyan-400/50 active:scale-95"
+                    aria-label="Previous"
+                    title="Previous"
+                  >
+                    <ChevronLeft size={16} className="sm:w-5 sm:h-5" />
+                  </button>
+
+                  <button
+                    onClick={togglePlayPause}
+                    className="p-2 sm:p-2.5 rounded-full border border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-black transition-all duration-300 hover:shadow-lg hover:shadow-cyan-400/50 active:scale-95"
+                    aria-label="Play/Pause"
+                    title="Play/Pause"
+                  >
+                    {isPlaying ? (
+                      <Pause size={16} className="sm:w-5 sm:h-5" />
+                    ) : (
+                      <Play size={16} className="sm:w-5 sm:h-5" />
+                    )}
+                  </button>
+
+                  <button
+                    onClick={toggleMute}
+                    className="p-2 sm:p-2.5 rounded-full border border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-black transition-all duration-300 hover:shadow-lg hover:shadow-cyan-400/50 active:scale-95"
+                    aria-label="Mute"
+                    title="Mute"
+                  >
+                    {isMuted ? (
+                      <VolumeX size={16} className="sm:w-5 sm:h-5" />
+                    ) : (
+                      <Volume2 size={16} className="sm:w-5 sm:h-5" />
+                    )}
+                  </button>
+
+                  <button
+                    onClick={handleNext}
+                    className="p-2 sm:p-2.5 rounded-full border border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-black transition-all duration-300 hover:shadow-lg hover:shadow-cyan-400/50 active:scale-95"
+                    aria-label="Next"
+                    title="Next"
+                  >
+                    <ChevronRight size={16} className="sm:w-5 sm:h-5" />
+                  </button>
+                </div>
+
+                {/* Instructions */}
+                <div className="text-center text-gray-300 text-xs sm:text-sm">
+                  <p>← → Space M • Slide {currentSlide + 1} / {slides.length}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Audio player (hidden) */}
       <audio
@@ -220,80 +381,6 @@ export default function Presentation() {
         autoPlay
         controls={false}
       />
-
-      {/* Controls - positioned at bottom */}
-      <div className="relative z-20 mt-auto w-full">
-        {/* Progress bar */}
-        <div className="w-full h-1 bg-slate-800/50">
-          <div
-            className="h-full bg-gradient-to-r from-cyan-400 to-cyan-300 transition-all duration-100"
-            style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }}
-          />
-        </div>
-
-        {/* Control panel */}
-        <div className="bg-gradient-to-t from-black via-black/95 to-black/60 px-3 py-4 sm:px-4 sm:py-5">
-          <div className="w-full space-y-3 sm:space-y-4">
-            {/* Time display */}
-            <div className="flex justify-between text-xs sm:text-sm text-cyan-400 opacity-75">
-              <span>{formatTime(currentTime)}</span>
-              <span>{formatTime(duration)}</span>
-            </div>
-
-            {/* Control buttons */}
-            <div className="flex items-center gap-3 sm:gap-4 justify-center">
-              <button
-                onClick={handlePrev}
-                className="p-2 sm:p-2.5 rounded-full border border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-black transition-all duration-300 hover:shadow-lg hover:shadow-cyan-400/50 active:scale-95"
-                aria-label="Previous"
-                title="Previous"
-              >
-                <ChevronLeft size={16} className="sm:w-5 sm:h-5" />
-              </button>
-
-              <button
-                onClick={togglePlayPause}
-                className="p-2 sm:p-2.5 rounded-full border border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-black transition-all duration-300 hover:shadow-lg hover:shadow-cyan-400/50 active:scale-95"
-                aria-label="Play/Pause"
-                title="Play/Pause"
-              >
-                {isPlaying ? (
-                  <Pause size={16} className="sm:w-5 sm:h-5" />
-                ) : (
-                  <Play size={16} className="sm:w-5 sm:h-5" />
-                )}
-              </button>
-
-              <button
-                onClick={toggleMute}
-                className="p-2 sm:p-2.5 rounded-full border border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-black transition-all duration-300 hover:shadow-lg hover:shadow-cyan-400/50 active:scale-95"
-                aria-label="Mute"
-                title="Mute"
-              >
-                {isMuted ? (
-                  <VolumeX size={16} className="sm:w-5 sm:h-5" />
-                ) : (
-                  <Volume2 size={16} className="sm:w-5 sm:h-5" />
-                )}
-              </button>
-
-              <button
-                onClick={handleNext}
-                className="p-2 sm:p-2.5 rounded-full border border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-black transition-all duration-300 hover:shadow-lg hover:shadow-cyan-400/50 active:scale-95"
-                aria-label="Next"
-                title="Next"
-              >
-                <ChevronRight size={16} className="sm:w-5 sm:h-5" />
-              </button>
-            </div>
-
-            {/* Instructions */}
-            <div className="text-center text-gray-300 text-xs sm:text-sm">
-              <p>← → Space M • Slide {currentSlide + 1} / {slides.length}</p>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
